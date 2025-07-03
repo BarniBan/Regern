@@ -13,47 +13,14 @@
     'use strict';
 
     // ========= DRAGGABLE + RESIZABLE =========
-    function makeDraggableResizable(el) {
+    function makeResizable(el) {
         el.style.position = 'fixed';
         el.style.resize = 'both'; // <- ключевой стиль для увеличения/уменьшения
         el.style.overflow = 'auto';
         el.style.minWidth = '200px';
         el.style.minHeight = '100px';
         el.style.boxSizing = 'border-box';
-
-        let isDragging = false;
-        let offsetX = 0, offsetY = 0;
-
-        el.addEventListener('mousedown', function (e) {
-            // Не двигать, если кликаем по элементам ввода или по краям (для resize)
-            const tag = e.target.tagName;
-            const isInput = ['TEXTAREA', 'INPUT', 'BUTTON', 'SELECT'].includes(tag);
-            const rect = el.getBoundingClientRect();
-            const nearRightEdge = e.clientX > rect.right - 16;
-            const nearBottomEdge = e.clientY > rect.bottom - 16;
-
-            if (isInput || nearRightEdge || nearBottomEdge) return;
-
-            isDragging = true;
-            offsetX = e.clientX - el.offsetLeft;
-            offsetY = e.clientY - el.offsetTop;
-            el.style.zIndex = 999999;
-            document.body.style.userSelect = 'none'; // предотвращает выделение
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', function (e) {
-            if (!isDragging) return;
-            el.style.left = `${e.clientX - offsetX}px`;
-            el.style.top = `${e.clientY - offsetY}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            document.body.style.userSelect = '';
-        });
     }
-
 
     // ========== WebSocket Logger ==========
     function initWebSocketLogger() {
@@ -82,20 +49,29 @@
                 userSelect: 'text',
                 position: 'fixed',
                 overflow: 'auto',
-                resize: 'both',         // Добавлено для возможности изменять размер
+                resize: 'both',
             });
 
             panel.innerHTML = `
                 <div style="text-align:right; margin-bottom:4px;">
                     <button id="clear-ws-log" style="background:none;border:1px solid #00FFCC;color:#00FFCC;font-size:10px;padding:2px 6px;cursor:pointer;border-radius:3px;">Clear</button>
+                    <button id="copy-ws-log" style="background:none;border:1px solid #00FFCC;color:#00FFCC;font-size:10px;padding:2px 6px;cursor:pointer;border-radius:3px;margin-left:4px;">Copy All</button>
                 </div>
                 <div id="ws-log-content" style="max-height: calc(100% - 30px); overflow-y: auto;"></div>
             `;
             document.body.appendChild(panel);
-            // НЕ вызываем makeDraggableResizable, чтобы не было перетаскивания
 
             document.getElementById('clear-ws-log').onclick = () => {
                 document.getElementById('ws-log-content').innerHTML = '';
+            };
+
+            document.getElementById('copy-ws-log').onclick = () => {
+                const content = document.getElementById('ws-log-content').textContent;
+                navigator.clipboard.writeText(content).then(() => {
+                    const btn = document.getElementById('copy-ws-log');
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = 'Copy All', 2000);
+                });
             };
         };
 
@@ -138,11 +114,15 @@
             borderRadius: '8px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
             zIndex: 999999,
-            fontFamily: 'Arial, sans-serif'
+            fontFamily: 'Arial, sans-serif',
+            userSelect: 'text'
         });
 
         container.innerHTML = `
-            <h3 style="margin:0 0 10px 0; color:#333;">Energy Calculator</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin:0; color:#333;">Energy Calculator</h3>
+                <button id="copy-results" style="background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 8px; font-size:12px;">Copy Results</button>
+            </div>
             <textarea id="energy-input" rows="8" style="width:100%; height:100px; padding:8px; border:1px solid #ccc; border-radius:4px; margin-bottom:10px; font-family:monospace;"></textarea>
             <button id="calculate-btn" style="width:100%; padding:10px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
                 Calculate
@@ -150,7 +130,7 @@
             <div id="energy-result" style="margin-top:15px; max-height:150px; overflow-y:auto; color: black;"></div>
         `;
         document.body.appendChild(container);
-        makeDraggableResizable(container);
+        makeResizable(container); // Только изменение размера, без перетаскивания
 
         function extractEnergies(text) {
             const regex = /"energy"\s*:\s*([\d.]+)/g;
@@ -236,6 +216,19 @@
 
             resultHTML += `</tbody></table></div>`;
             resultDiv.innerHTML = resultHTML;
+        });
+
+        // Добавляем кнопку копирования результатов
+        document.getElementById('copy-results').addEventListener('click', function() {
+            const resultDiv = document.getElementById('energy-result');
+            if (resultDiv) {
+                const textToCopy = resultDiv.textContent;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const btn = document.getElementById('copy-results');
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = 'Copy Results', 2000);
+                });
+            }
         });
     }
 
